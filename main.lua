@@ -1,0 +1,304 @@
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting") -- Добавили сервис освещения
+local LocalPlayer = Players.LocalPlayer
+
+-- Очистка старых версий меню
+for _, old in pairs(LocalPlayer.PlayerGui:GetChildren()) do
+    if old.Name == "RaidMenu" then old:Destroy() end
+end
+
+local Settings = {
+    CurrentTab = "MAIN",
+    SpeedEnabled = false, SpeedValue = 24, 
+    JumpEnabled = false, JumpValue = 70, 
+    InfJumpEnabled = false,
+    GodModeEnabled = false,
+    AntiPushEnabled = false,
+    InfAmmoEnabled = false, 
+    FlyEnabled = false, FlySpeed = 20,
+    NoclipEnabled = false,
+    FullBrightEnabled = false, -- Новая настройка
+    HighlightPlayers = false, 
+    HighlightGuards = false,
+    HighlightFrontman = false, 
+    ShowNames = false,
+    ShowHealth = false
+}
+
+-- [ ГРАФИКА ИНТЕРФЕЙСА ]
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "RaidMenu"; ScreenGui.ResetOnSpawn = false
+pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.BackgroundColor3 = Color3.fromRGB(13, 17, 23)
+MainFrame.Position = UDim2.new(0.25, 0, 0.25, 0); MainFrame.Size = UDim2.new(0, 750, 0, 480)
+MainFrame.Active = true; MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 4)
+
+local SideBar = Instance.new("Frame", MainFrame)
+SideBar.BackgroundColor3 = Color3.fromRGB(10, 13, 18); SideBar.Size = UDim2.new(0, 160, 1, 0)
+Instance.new("UICorner", SideBar).CornerRadius = UDim.new(0, 4)
+
+local ButtonList = Instance.new("Frame", SideBar)
+ButtonList.Position = UDim2.new(0, 0, 0, 60); ButtonList.Size = UDim2.new(1, 0, 1, -60); ButtonList.BackgroundTransparency = 1
+Instance.new("UIListLayout", ButtonList).Padding = UDim.new(0, 2)
+
+local Logo = Instance.new("TextLabel", SideBar)
+Logo.Position = UDim2.new(0, 15, 0, 15); Logo.Size = UDim2.new(0, 130, 0, 30); Logo.BackgroundTransparency = 1; Logo.Text = "Raidᵗᵐ"; Logo.TextColor3 = Color3.fromRGB(100, 200, 255); Logo.Font = "GothamBold"; Logo.TextSize = 22; Logo.TextXAlignment = "Left"
+
+local PageContainer = Instance.new("Frame", MainFrame)
+PageContainer.Position = UDim2.new(0, 175, 0, 40); PageContainer.Size = UDim2.new(1, -190, 1, -55); PageContainer.BackgroundTransparency = 1
+local Pages = {}
+
+local function CreatePage(name)
+    local p = Instance.new("Frame", PageContainer)
+    p.Name = name; p.Size = UDim2.new(1, 0, 1, 0); p.BackgroundTransparency = 1; p.Visible = false
+    Pages[name] = p; return p
+end
+
+local MainTab = CreatePage("MAIN")
+local VisualsTab = CreatePage("Visuals")
+local MiscTab = CreatePage("Misc")
+local SettingsTab = CreatePage("SETTINGS")
+MainTab.Visible = true
+
+local function CreateColumn(parent, pos)
+    local f = Instance.new("ScrollingFrame", parent)
+    f.Position = pos; f.Size = UDim2.new(0.48, 0, 1, 0); f.BackgroundTransparency = 1
+    f.ScrollBarThickness = 2; f.ScrollBarImageColor3 = Color3.fromRGB(100, 200, 255)
+    f.CanvasSize = UDim2.new(0, 0, 0, 0); f.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    f.BorderSizePixel = 0
+    Instance.new("UIListLayout", f).Padding = UDim.new(0, 8)
+    return f
+end
+
+local MainLeft = CreateColumn(MainTab, UDim2.new(0, 0, 0, 0))
+local MainRight = CreateColumn(MainTab, UDim2.new(0.52, 0, 0, 0))
+local VisualsColLeft = CreateColumn(VisualsTab, UDim2.new(0, 0, 0, 0))
+local VisualsColRight = CreateColumn(VisualsTab, UDim2.new(0.52, 0, 0, 0))
+local MiscLeft = CreateColumn(MiscTab, UDim2.new(0, 0, 0, 0))
+
+-- [ КОМПОНЕНТЫ ]
+local function CreateHeader(parent, text)
+    local Frame = Instance.new("Frame", parent); Frame.Size = UDim2.new(1, -10, 0, 20); Frame.BackgroundTransparency = 1
+    local Txt = Instance.new("TextLabel", Frame); Txt.Size = UDim2.new(1, -10, 1, 0); Txt.Position = UDim2.new(0, 5, 0, 0); Txt.Text = text; Txt.TextColor3 = Color3.fromRGB(170, 180, 190); Txt.Font = "GothamSemibold"; Txt.TextSize = 12; Txt.BackgroundTransparency = 1; Txt.TextXAlignment = "Left"
+end
+
+local function CreateToggle(parent, title, callback)
+    local Frame = Instance.new("Frame", parent); Frame.Size = UDim2.new(1, -10, 0, 32); Frame.BackgroundColor3 = Color3.fromRGB(20, 25, 32); Frame.BorderSizePixel = 0; Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4)
+    local Txt = Instance.new("TextLabel", Frame); Txt.Text = title; Txt.Size = UDim2.new(1, -40, 1, 0); Txt.Position = UDim2.new(0, 10, 0, 0); Txt.TextColor3 = Color3.fromRGB(210, 215, 220); Txt.Font = "GothamSemibold"; Txt.TextSize = 13; Txt.BackgroundTransparency = 1; Txt.TextXAlignment = "Left"
+    local CheckBox = Instance.new("TextButton", Frame); CheckBox.Size = UDim2.new(0, 18, 0, 18); CheckBox.Position = UDim2.new(1, -24, 0.5, -9); CheckBox.BackgroundColor3 = Color3.fromRGB(30, 38, 48); CheckBox.Text = ""; Instance.new("UICorner", CheckBox).CornerRadius = UDim.new(0, 3)
+    local CheckIcon = Instance.new("ImageLabel", CheckBox); CheckIcon.Size = UDim2.new(0, 12, 0, 12); CheckIcon.Position = UDim2.new(0.5, -6, 0.5, -6); CheckIcon.BackgroundTransparency = 1; CheckIcon.Image = "rbxassetid://6031094667"; CheckIcon.Visible = false
+    local active = false
+    CheckBox.MouseButton1Click:Connect(function()
+        active = not active; CheckIcon.Visible = active; CheckBox.BackgroundColor3 = active and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(30, 38, 48); callback(active)
+    end)
+end
+
+local function CreateSliderToggle(parent, title, min, max, default, callback)
+    local Frame = Instance.new("Frame", parent); Frame.Size = UDim2.new(1, -10, 0, 55); Frame.BackgroundColor3 = Color3.fromRGB(20, 25, 32); Frame.BorderSizePixel = 0; Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4)
+    local Txt = Instance.new("TextLabel", Frame); Txt.Text = title; Txt.Size = UDim2.new(1, -40, 0, 25); Txt.Position = UDim2.new(0, 10, 0, 2); Txt.TextColor3 = Color3.fromRGB(210, 215, 220); Txt.Font = "GothamSemibold"; Txt.TextSize = 13; Txt.BackgroundTransparency = 1; Txt.TextXAlignment = "Left"
+    local CheckBox = Instance.new("TextButton", Frame); CheckBox.Size = UDim2.new(0, 18, 0, 18); CheckBox.Position = UDim2.new(1, -24, 0, 6); CheckBox.BackgroundColor3 = Color3.fromRGB(30, 38, 48); CheckBox.Text = ""; Instance.new("UICorner", CheckBox).CornerRadius = UDim.new(0, 3)
+    local CheckIcon = Instance.new("ImageLabel", CheckBox); CheckIcon.Size = UDim2.new(0, 12, 0, 12); CheckIcon.Position = UDim2.new(0.5, -6, 0.5, -6); CheckIcon.BackgroundTransparency = 1; CheckIcon.Image = "rbxassetid://6031094667"; CheckIcon.Visible = false
+    local ValLbl = Instance.new("TextLabel", Frame); ValLbl.Text = tostring(default); ValLbl.Size = UDim2.new(0, 40, 0, 25); ValLbl.Position = UDim2.new(1, -65, 0, 2); ValLbl.TextColor3 = Color3.fromRGB(120, 130, 140); ValLbl.Font = "Gotham"; ValLbl.TextSize = 11; ValLbl.BackgroundTransparency = 1; ValLbl.TextXAlignment = "Right"
+    local SBar = Instance.new("Frame", Frame); SBar.Size = UDim2.new(1, -20, 0, 4); SBar.Position = UDim2.new(0, 10, 0, 38); SBar.BackgroundColor3 = Color3.fromRGB(30, 38, 48); Instance.new("UICorner", SBar)
+    local SFill = Instance.new("Frame", SBar); SFill.Size = UDim2.new(0.5, 0, 1, 0); SFill.BackgroundColor3 = Color3.fromRGB(100, 200, 255); Instance.new("UICorner", SFill)
+    local SBtn = Instance.new("TextButton", SFill); SBtn.Size = UDim2.new(0, 12, 0, 12); SBtn.Position = UDim2.new(1, -6, 0.5, -6); SBtn.BackgroundColor3 = Color3.new(1, 1, 1); SBtn.Text = ""; Instance.new("UICorner", SBtn).CornerRadius = UDim.new(1, 0)
+    local active = false
+    CheckBox.MouseButton1Click:Connect(function()
+        active = not active; CheckIcon.Visible = active; CheckBox.BackgroundColor3 = active and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(30, 38, 48); callback(active, tonumber(ValLbl.Text))
+    end)
+    local drag = false
+    local function update()
+        local rel = math.clamp((UserInputService:GetMouseLocation().X - SBar.AbsolutePosition.X) / SBar.AbsoluteSize.X, 0, 1)
+        SFill.Size = UDim2.new(rel, 0, 1, 0); local val = math.floor(min + (rel * (max - min))); ValLbl.Text = tostring(val)
+        if active then callback(active, val) end
+    end
+    SBtn.MouseButton1Down:Connect(function() drag = true end)
+    UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end end)
+    UserInputService.InputChanged:Connect(function(i) if drag and i.UserInputType == Enum.UserInputType.MouseMovement then update() end end)
+end
+
+local function CreateButton(parent, title, callback)
+    local Frame = Instance.new("Frame", parent); Frame.Size = UDim2.new(1, -10, 0, 32); Frame.BackgroundColor3 = Color3.fromRGB(30, 38, 48); Frame.BorderSizePixel = 0; Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 4)
+    local Btn = Instance.new("TextButton", Frame); Btn.Size = UDim2.new(1, 0, 1, 0); Btn.BackgroundTransparency = 1; Btn.Text = title; Btn.TextColor3 = Color3.fromRGB(100, 200, 255); Btn.Font = "GothamBold"; Btn.TextSize = 13
+    Btn.MouseButton1Click:Connect(callback)
+end
+
+-- [ НАПОЛНЕНИЕ ]
+CreateSliderToggle(MainLeft, "Speed", 16, 100, 24, function(s, v) Settings.SpeedEnabled = s; Settings.SpeedValue = v end)
+CreateSliderToggle(MainLeft, "Jump", 50, 150, 70, function(s, v) Settings.JumpEnabled = s; Settings.JumpValue = v end)
+CreateSliderToggle(MainLeft, "Fly Speed", 10, 100, 20, function(s, v) Settings.FlyEnabled = s; Settings.FlySpeed = v end)
+CreateToggle(MainLeft, "Infinite Jump", function(s) Settings.InfJumpEnabled = s end)
+CreateToggle(MainLeft, "God Mode", function(s) Settings.GodModeEnabled = s end)
+CreateToggle(MainLeft, "Noclip", function(s) Settings.NoclipEnabled = s end)
+CreateToggle(MainLeft, "FullBright", function(s) Settings.FullBrightEnabled = s end) -- ДОБАВЛЕНО ПОСЛЕ NOCLIP
+
+CreateToggle(MainRight, "anti-push", function(s) Settings.AntiPushEnabled = s end)
+
+CreateToggle(VisualsColLeft, "ESP Players", function(s) Settings.HighlightPlayers = s end)
+CreateToggle(VisualsColLeft, "ESP Guards", function(s) Settings.HighlightGuards = s end)
+CreateToggle(VisualsColLeft, "ESP FRONTMAN", function(s) Settings.HighlightFrontman = s end)
+CreateToggle(VisualsColLeft, "Player Names", function(s) Settings.ShowNames = s end)
+CreateToggle(VisualsColLeft, "Player Health", function(s) Settings.ShowHealth = s end)
+
+CreateToggle(VisualsColRight, "Infinite Ammo", function(s) Settings.InfAmmoEnabled = s end)
+
+CreateHeader(MiscLeft, "Red / Green Light")
+local function TPtoEnd()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local targetCFrame = nil
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and (v.Name:lower():find("goal") or v.Name:lower():find("finish") or v.Color == Color3.fromRGB(255, 0, 191)) then
+                targetCFrame = v.CFrame * CFrame.new(0, 4, 8); break
+            end
+        end
+        if not targetCFrame then
+            local doll = workspace:FindFirstChild("Doll", true) or workspace:FindFirstChild("Girl", true)
+            if doll then targetCFrame = doll:GetPivot() * CFrame.new(0, 4, 12) end
+        end
+        if targetCFrame then hrp.CFrame = targetCFrame; hrp.Velocity = Vector3.new(0,0,0)
+        else hrp.CFrame = hrp.CFrame * CFrame.new(0, 10, -450) end
+    end
+end
+CreateButton(MiscLeft, "TP to End", TPtoEnd)
+
+-- [ ТАБЫ ]
+local function AddTab(name, iconId)
+    local btn = Instance.new("TextButton", ButtonList); btn.Size = UDim2.new(1, 0, 0, 40); btn.BackgroundTransparency = 1; btn.Text = ""
+    local img = Instance.new("ImageLabel", btn); img.Size = UDim2.new(0, 18, 0, 18); img.Position = UDim2.new(0, 15, 0.5, -9); img.Image = iconId; img.BackgroundTransparency = 1; img.ImageColor3 = Color3.fromRGB(150, 150, 150)
+    local lbl = Instance.new("TextLabel", btn); lbl.Size = UDim2.new(1, -45, 1, 0); lbl.Position = UDim2.new(0, 45, 0, 0); lbl.Text = name; lbl.TextColor3 = Color3.fromRGB(160, 160, 160); lbl.Font = "GothamSemibold"; lbl.BackgroundTransparency = 1; lbl.TextXAlignment = "Left"; lbl.TextSize = 13
+    btn.MouseButton1Click:Connect(function() for n, p in pairs(Pages) do p.Visible = (n == name) end end)
+end
+AddTab("MAIN", "rbxassetid://10734950309"); AddTab("Visuals", "rbxassetid://6035067836"); AddTab("Misc", "rbxassetid://10723343321"); AddTab("SETTINGS", "rbxassetid://10734950020")
+
+-- [ ESP LOGIC ]
+local function EnsureESP(player)
+    local char = player.Character; if not char then return end
+    local head = char:FindFirstChild("Head"); local hrp = char:FindFirstChild("HumanoidRootPart")
+    if head and not head:FindFirstChild("RaidHealth") then
+        local hbGui = Instance.new("BillboardGui", head); hbGui.Name = "RaidHealth"; hbGui.Size = UDim2.new(4, 0, 0.5, 0); hbGui.StudsOffset = Vector3.new(0, 2, 0); hbGui.AlwaysOnTop = true
+        local hbBack = Instance.new("Frame", hbGui); hbBack.Size = UDim2.new(1, 0, 0.4, 0); hbBack.BackgroundColor3 = Color3.new(0,0,0); hbBack.BorderSizePixel = 0
+        local hbFill = Instance.new("Frame", hbBack); hbFill.Name = "Fill"; hbFill.Size = UDim2.new(1, 0, 1, 0); hbFill.BackgroundColor3 = Color3.fromRGB(0, 255, 120); hbFill.BorderSizePixel = 0
+    end
+    if hrp and not hrp:FindFirstChild("RaidName") then
+        local nameGui = Instance.new("BillboardGui", hrp); nameGui.Name = "RaidName"; nameGui.Size = UDim2.new(5, 0, 1, 0); nameGui.StudsOffset = Vector3.new(0, -3.5, 0); nameGui.AlwaysOnTop = true
+        local nameLbl = Instance.new("TextLabel", nameGui); nameLbl.Size = UDim2.new(1, 0, 1, 0); nameLbl.BackgroundTransparency = 1; nameLbl.Text = player.Name; nameLbl.TextColor3 = Color3.new(1, 1, 1); nameLbl.Font = "GothamSemibold"; nameLbl.TextSize = 12; nameLbl.TextStrokeTransparency = 0.5
+    end
+end
+
+local function GetMoveVec()
+    local cam = workspace.CurrentCamera.CFrame; local vec = Vector3.new(0,0,0)
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then vec = vec + cam.LookVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then vec = vec - cam.LookVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then vec = vec + cam.RightVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then vec = vec - cam.RightVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vec = vec + Vector3.new(0,1,0) end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then vec = vec - Vector3.new(0,1,0) end
+    return vec
+end
+
+-- [ LOOP ]
+RunService.RenderStepped:Connect(function(dt)
+    local char = LocalPlayer.Character; local hum = char and char:FindFirstChildOfClass("Humanoid"); local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if char and hum and hrp then
+        if Settings.GodModeEnabled then hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false); if hum.Health < hum.MaxHealth then hum.Health = hum.MaxHealth end end
+        if Settings.FlyEnabled then
+            local move = GetMoveVec(); hrp.Velocity = Vector3.new(0, 0.1, 0)
+            if move.Magnitude > 0 then 
+                local target = CFrame.new(hrp.Position, hrp.Position + move)
+                hrp.CFrame = hrp.CFrame:Lerp(target, 0.2) + (move * Settings.FlySpeed * dt) 
+            end
+        else
+            hum.WalkSpeed = Settings.SpeedEnabled and Settings.SpeedValue or 16
+            hum.JumpPower = Settings.JumpEnabled and Settings.JumpValue or 50; hum.UseJumpPower = true 
+            if Settings.InfJumpEnabled and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, hum.JumpPower, hrp.Velocity.Z)
+            end
+        end
+        if Settings.AntiPushEnabled then hrp.RotVelocity = Vector3.new(0, 0, 0) end
+        if Settings.NoclipEnabled then for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+    end
+
+    -- FullBright логика
+    if Settings.FullBrightEnabled then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+    end
+
+    -- Infinite Ammo
+    if Settings.InfAmmoEnabled and char then
+        local tools = {char, LocalPlayer:FindFirstChild("Backpack")}
+        for _, container in pairs(tools) do
+            if container then
+                for _, tool in pairs(container:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        for _, val in pairs(tool:GetDescendants()) do
+                            if val:IsA("IntValue") or val:IsA("NumberValue") then
+                                local n = val.Name:lower()
+                                if n:find("ammo") or n:find("clip") or n:find("mag") then
+                                    val.Value = 999
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- ESP С ИЗОЛЯЦИЕЙ РОЛЕЙ
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Character and p ~= LocalPlayer and p.Character:FindFirstChild("Humanoid") then
+            EnsureESP(p)
+            local pchar = p.Character
+            local phum = pchar.Humanoid
+            local high = pchar:FindFirstChild("RaidHighlight") or Instance.new("Highlight", pchar)
+            high.Name = "RaidHighlight"
+            
+            local isGuard = p.Name:lower():find("guard") or pchar.Name:lower():find("guard")
+            local isFront = p.Name:lower():find("frontman") or pchar.Name:lower():find("frontman")
+            
+            if isGuard then
+                high.Enabled = Settings.HighlightGuards
+                high.FillColor = Color3.new(1, 0, 0)
+            elseif isFront then
+                high.Enabled = Settings.HighlightFrontman
+                high.FillColor = Color3.new(1, 1, 1)
+            else
+                high.Enabled = Settings.HighlightPlayers
+                high.FillColor = Color3.new(0, 0.7, 1)
+            end
+            
+            if pchar.Head:FindFirstChild("RaidHealth") then
+                pchar.Head.RaidHealth.Enabled = Settings.ShowHealth
+                local fill = pchar.Head.RaidHealth:FindFirstChild("Fill", true)
+                if fill then fill.Size = UDim2.new(phum.Health / phum.MaxHealth, 0, 1, 0) end
+            end
+            if pchar.HumanoidRootPart:FindFirstChild("RaidName") then 
+                pchar.HumanoidRootPart.RaidName.Enabled = Settings.ShowNames 
+            end
+        end
+    end
+end)
+
+-- Кнопки закрытия/сворачивания
+local TopBtns = Instance.new("Frame", MainFrame); TopBtns.Size = UDim2.new(0, 65, 0, 30); TopBtns.Position = UDim2.new(1, -70, 0, 5); TopBtns.BackgroundTransparency = 1
+local CloseBtn = Instance.new("TextButton", TopBtns); CloseBtn.Size = UDim2.new(0, 25, 0, 25); CloseBtn.Position = UDim2.new(0.5, 5, 0, 0); CloseBtn.Text = "×"; CloseBtn.TextColor3 = Color3.new(1,1,1); CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50); CloseBtn.Font = "GothamBold"; Instance.new("UICorner", CloseBtn)
+local MiniBtn = Instance.new("TextButton", TopBtns); MiniBtn.Size = UDim2.new(0, 25, 0, 25); MiniBtn.Position = UDim2.new(0, 0, 0, 0); MiniBtn.Text = "−"; MiniBtn.TextColor3 = Color3.new(1,1,1); MiniBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55); MiniBtn.Font = "GothamBold"; Instance.new("UICorner", MiniBtn)
+local OpenBtn = Instance.new("TextButton", ScreenGui); OpenBtn.Size = UDim2.new(0, 40, 0, 40); OpenBtn.Position = UDim2.new(0, 50, 0.2, 0); OpenBtn.BackgroundColor3 = Color3.fromRGB(13, 17, 23); OpenBtn.Text = "R"; OpenBtn.TextColor3 = Color3.fromRGB(100, 200, 255); OpenBtn.Font = "GothamBold"; OpenBtn.TextSize = 20; OpenBtn.Visible = false; Instance.new("UICorner", OpenBtn)
+MiniBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenBtn.Visible = true end)
+OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenBtn.Visible = false end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
