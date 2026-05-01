@@ -1,8 +1,8 @@
-local url = (https://raw.https://github.com/toporik242/hap/new/main.lua)"
+local url = "https://raw.githubusercontent.com/PyhTeT/ANTICRACK/refs/heads/main/SOSITE"
 
-local repo = "https://raw.githubusercontent.com/toporik242/hap/new/main/"
+local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/toporik242/pasta.land/refs/heads/main/ThemeManager"))()
+local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/PyhTeT/pasta.land/refs/heads/main/ThemeManager"))()
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
